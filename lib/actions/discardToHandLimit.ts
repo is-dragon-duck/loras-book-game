@@ -1,11 +1,11 @@
 import { GameState, PlayerState, PendingDiscardToHandLimit } from "../types";
 import { cardDisplayName } from "../cards";
-import { discardFromHand, log } from "../engine";
+import { discardFromHandWithAtonement, log } from "../engine";
 import { getHandLimit } from "../view";
 
 /**
  * Discard cards to get down to hand limit at end of turn.
- * For Milestone 1: no Stag atonement. Milestone 2 will add it.
+ * Stags discarded this way trigger atonement (which can cause elimination).
  */
 export function handleDiscardToHandLimit(
   state: GameState,
@@ -24,7 +24,6 @@ export function handleDiscardToHandLimit(
   const mustDiscard = player.hand.length - handLimit;
 
   if (mustDiscard <= 0) {
-    // Shouldn't happen, but clear the pending action
     state.pendingAction = null;
     return null;
   }
@@ -33,28 +32,27 @@ export function handleDiscardToHandLimit(
     return `Must discard exactly ${mustDiscard} card(s), got ${cardIds.length}`;
   }
 
-  // Verify all cards are in hand
+  // Verify all cards are in hand and no duplicates
+  if (new Set(cardIds).size !== cardIds.length) {
+    return "Duplicate cards in discard selection";
+  }
   for (const cardId of cardIds) {
     if (!player.hand.includes(cardId)) {
       return `Card ${cardId} is not in your hand`;
     }
   }
 
-  // Check for duplicates
-  if (new Set(cardIds).size !== cardIds.length) {
-    return "Duplicate cards in discard selection";
-  }
-
-  // Discard them
+  // Discard them with atonement for Stags
   const discardedNames: string[] = [];
   for (const cardId of cardIds) {
-    discardFromHand(state, player, cardId);
     discardedNames.push(cardDisplayName(cardId));
+    discardFromHandWithAtonement(state, player, cardId);
+    // Player may have been eliminated by atonement
+    if (player.eliminated) break;
   }
 
   log(state, `${player.name} discarded ${discardedNames.join(", ")} to hand limit.`);
 
-  // Clear pending action so autoAdvance continues
   state.pendingAction = null;
   return null;
 }

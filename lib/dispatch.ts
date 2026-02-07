@@ -5,6 +5,8 @@ import { handleDrawCard } from "./actions/drawCard";
 import { handlePlayHealing } from "./actions/playHealing";
 import { handleNoTerritory } from "./actions/noTerritory";
 import { handleDiscardToHandLimit } from "./actions/discardToHandLimit";
+import { handleDraftKingdom, handleDraftKingdomPick } from "./actions/draftKingdom";
+import { handlePlayStag, handleStagKingdomPick } from "./actions/playStag";
 
 export interface ActionResult {
   error?: string;
@@ -43,15 +45,23 @@ export function dispatchAction(
         error = handleDiscardToHandLimit(state, player, body.cardIds as string[]);
         break;
 
+      case "draftKingdomPick":
+        error = handleDraftKingdomPick(state, player, body.cardId as string);
+        break;
+
+      case "stagKingdomPick":
+        error = handleStagKingdomPick(state, player, body.cardId as string);
+        break;
+
       // Future milestones will add more pending action handlers here:
-      // case "draftKingdomPick":
       // case "huntResponse":
+      // case "huntDiscard":
       // case "magiChoice":
       // case "magiPlaceCards":
       // case "titheContribute":
+      // case "titheDiscard":
       // case "kingCommandResponse":
       // case "kingCommandCollect":
-      // case "stagKingdomPick":
 
       default:
         return { error: `Unknown or invalid action '${action}' for pending ${state.pendingAction.type}` };
@@ -72,6 +82,14 @@ export function dispatchAction(
     // Kingdom actions
     case "drawCard":
       error = handleDrawCard(state, player);
+      break;
+
+    case "draftKingdom":
+      error = handleDraftKingdom(state, player, body.cardId as string);
+      break;
+
+    case "playStag":
+      error = handlePlayStag(state, player, body.cardId as string, body.discardIds as string[]);
       break;
 
     // Territory actions
@@ -97,10 +115,6 @@ export function dispatchAction(
     case "noTerritory":
       error = handleNoTerritory(state, player);
       break;
-
-    // Future milestones:
-    // case "draftKingdom":
-    // case "playStag":
 
     default:
       return { error: `Unknown action '${action}'` };

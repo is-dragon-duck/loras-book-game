@@ -1,6 +1,6 @@
 import { GameState, PlayerState } from "./types";
-import { parseCardType, shuffle } from "./cards";
-import { getHandLimit } from "./view";
+import { parseCardType, shuffle, cardDisplayName, stagAtonementCost } from "./cards";
+import { getHandLimit, getTerritoryHealingValue, getStagPoints } from "./view";
 
 // ---- Logging ----
 
@@ -113,6 +113,92 @@ export function getOpponentSeatsInOrder(state: GameState, mySeat: number): numbe
   return seats;
 }
 
+// ---- Stag Atonement ----
+
+/**
+ * When a Stag is discarded from hand for any reason, the player must atone
+ * (contribute) based on the Stag's value, UNLESS their territory Healing
+ * value is >= the Stag's value.
+ *
+ * Returns an error string if the player cannot pay (and was eliminated),
+ * or null on success.
+ */
+export function applyAtonement(state: GameState, player: PlayerState, stagCardId: string): void {
+  const stagValue = parseInt(stagCardId.split("-")[1], 10);
+  const healingValue = getTerritoryHealingValue(player);
+
+  if (healingValue >= stagValue) {
+    log(state, `${player.name} discards ${cardDisplayName(stagCardId)} — Healing (${healingValue}) covers atonement.`);
+    return;
+  }
+
+  const cost = stagAtonementCost(stagValue);
+
+  if (player.contributionsRemaining >= cost) {
+    player.contributionsRemaining -= cost;
+    player.contributionsMade += cost;
+    log(state, `${player.name} atones ${cost} for discarding ${cardDisplayName(stagCardId)}.`);
+  } else {
+    // Can't pay — eliminated
+    log(state, `${player.name} cannot atone for ${cardDisplayName(stagCardId)} and is eliminated!`);
+    eliminatePlayer(state, player);
+  }
+}
+
+// ---- Elimination ----
+
+export function eliminatePlayer(state: GameState, player: PlayerState) {
+  player.eliminated = true;
+
+  // Remove from player order
+  state.playerOrder = state.playerOrder.filter((s) => s !== player.seatIndex);
+
+  // Discard their hand
+  state.discard.push(...player.hand);
+  player.hand = [];
+
+  // Check last-standing win condition
+  checkLastStanding(state);
+}
+
+// ---- Win Conditions ----
+
+/**
+ * Check if a player has reached 18 stag points. Call after placing a Stag in territory.
+ */
+export function checkStagWin(state: GameState, player: PlayerState) {
+  if (state.winner) return;
+  const points = getStagPoints(player);
+  if (points >= 18) {
+    state.winner = player.id;
+    state.winReason = "stag18";
+    log(state, `${player.name} has ${points} Stag Points and wins the game!`);
+  }
+}
+
+/**
+ * Check if only one player remains (all others eliminated).
+ */
+export function checkLastStanding(state: GameState) {
+  if (state.winner) return;
+  const alive = state.players.filter((p) => !p.eliminated);
+  if (alive.length === 1) {
+    state.winner = alive[0].id;
+    state.winReason = "lastStanding";
+    log(state, `${alive[0].name} is the last player standing and wins the game!`);
+  }
+}
+
+/**
+ * Discard a card from a player's hand with atonement if it's a Stag.
+ */
+export function discardFromHandWithAtonement(state: GameState, player: PlayerState, cardId: string) {
+  discardFromHand(state, player, cardId);
+  if (parseCardType(cardId) === "stag") {
+    applyAtonement(state, player, cardId);
+  }
+}
+
 // ---- Deck Exhaustion (Game End) ----
 
 export function triggerDeckExhaustion(state: GameState) {
@@ -194,7 +280,22 @@ export function autoAdvance(state: GameState): void {
   if (state.winner) return;
   if (state.pendingAction) return;
 
+  // Safety: if playerOrder is empty, everyone's eliminated (shouldn't happen, but guard)
+  if (state.playerOrder.length === 0) return;
+
+  // Fix currentPlayerIndex if it's out of bounds (player was removed from order)
+  if (state.currentPlayerIndex >= state.playerOrder.length) {
+    state.currentPlayerIndex = state.currentPlayerIndex % state.playerOrder.length;
+  }
+
   const player = getCurrentPlayer(state);
+
+  // If the current player was eliminated mid-turn, advance to next
+  if (player.eliminated) {
+    advanceTurn(state);
+    autoAdvance(state);
+    return;
+  }
 
   switch (state.turnPhase) {
     case "refreshKingdom": {
