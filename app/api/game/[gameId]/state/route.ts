@@ -30,16 +30,21 @@ export async function GET(
   // In lobby phase, return basic lobby info
   if (game.phase === "lobby") {
     const players = (game.state.players || []).map(
-      (p: { name: string; id: string }) => ({
+      (p: { name: string; id: string; seatIndex: number }) => ({
         name: p.name,
+        seatIndex: p.seatIndex,
+        ante: p.seatIndex + 1,
+        startingCards: 2 + (p.seatIndex + 1),
         isMe: p.id === playerId,
       })
     );
+    const isHost = players.length > 0 && players[0].isMe;
     return NextResponse.json({
       gameId,
       phase: "lobby",
       players,
       myPlayerId: playerId,
+      isHost,
     });
   }
 

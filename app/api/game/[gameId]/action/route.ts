@@ -32,6 +32,15 @@ export async function POST(
       return NextResponse.json({ error: "Game already started" }, { status: 400 });
     }
     const players: Partial<PlayerState>[] = game.state.players || [];
+
+    // If the request includes a playerId, check if they're already in the game (rejoin)
+    if (playerId) {
+      const existing = players.find((p) => p.id === playerId);
+      if (existing) {
+        return NextResponse.json({ playerId: existing.id, gameId, rejoined: true });
+      }
+    }
+
     if (players.length >= 6) {
       return NextResponse.json({ error: "Game is full (6 players max)" }, { status: 400 });
     }
@@ -39,11 +48,19 @@ export async function POST(
     if (!playerName || typeof playerName !== "string" || playerName.trim().length === 0) {
       return NextResponse.json({ error: "Name required" }, { status: 400 });
     }
+
+    const trimmedName = playerName.trim().substring(0, 20);
+
+    // Prevent duplicate names
+    if (players.some((p) => p.name?.toLowerCase() === trimmedName.toLowerCase())) {
+      return NextResponse.json({ error: "That name is already taken" }, { status: 400 });
+    }
+
     // Generate a player ID
     const newPlayerId = crypto.randomUUID();
     players.push({
       id: newPlayerId,
-      name: playerName.trim().substring(0, 20),
+      name: trimmedName,
       seatIndex: players.length,
     });
 

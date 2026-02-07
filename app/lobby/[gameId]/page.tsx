@@ -6,6 +6,9 @@ import { getAnonClient } from "@/lib/supabase";
 
 interface LobbyPlayer {
   name: string;
+  seatIndex: number;
+  ante: number;
+  startingCards: number;
   isMe: boolean;
 }
 
@@ -14,6 +17,7 @@ interface LobbyState {
   phase: string;
   players: LobbyPlayer[];
   myPlayerId: string;
+  isHost: boolean;
 }
 
 export default function LobbyPage() {
@@ -23,6 +27,7 @@ export default function LobbyPage() {
   const [lobby, setLobby] = useState<LobbyState | null>(null);
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const playerId =
     typeof window !== "undefined"
@@ -51,7 +56,6 @@ export default function LobbyPage() {
   useEffect(() => {
     fetchState();
 
-    // Subscribe to real-time changes on this game row
     const supabase = getAnonClient();
     const channel = supabase
       .channel(`game-${gameId}`)
@@ -92,13 +96,24 @@ export default function LobbyPage() {
     }
   }
 
+  async function handleCopyCode() {
+    try {
+      await navigator.clipboard.writeText(gameId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback: select text
+    }
+  }
+
   if (!playerId) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-8">
-        <p className="text-red-400">No player session found. Go back and join the game.</p>
+        <p className="text-red-400 mb-2">No player session found for this game.</p>
+        <p className="text-stone-400 text-sm mb-4">Go back and join using the game code.</p>
         <button
           onClick={() => router.push("/")}
-          className="mt-4 px-4 py-2 bg-stone-700 rounded"
+          className="px-4 py-2 bg-stone-700 hover:bg-stone-600 rounded transition-colors"
         >
           Back to Home
         </button>
@@ -109,10 +124,10 @@ export default function LobbyPage() {
   if (error) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-8">
-        <p className="text-red-400">{error}</p>
+        <p className="text-red-400 mb-4">{error}</p>
         <button
           onClick={() => router.push("/")}
-          className="mt-4 px-4 py-2 bg-stone-700 rounded"
+          className="px-4 py-2 bg-stone-700 hover:bg-stone-600 rounded transition-colors"
         >
           Back to Home
         </button>
@@ -123,62 +138,101 @@ export default function LobbyPage() {
   if (!lobby) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-8">
-        <p className="text-stone-400">Loading...</p>
+        <p className="text-stone-400">Loading lobby...</p>
       </main>
     );
   }
 
-  const isHost = lobby.players[0]?.isMe;
-  const canStart = isHost && lobby.players.length >= 2;
+  const canStart = lobby.isHost && lobby.players.length >= 2;
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8">
-      <h1 className="text-3xl font-bold mb-2">Game Lobby</h1>
+      <h1 className="text-3xl font-bold mb-6">Game Lobby</h1>
 
-      {/* Game code */}
-      <div className="mb-6 text-center">
-        <p className="text-stone-400 text-sm mb-1">Share this code with your friends:</p>
-        <p className="text-4xl font-mono font-bold tracking-[0.3em] text-amber-400">
-          {gameId}
-        </p>
-      </div>
-
-      {/* Player list */}
-      <div className="w-full max-w-sm mb-6">
-        <h2 className="text-sm text-stone-400 mb-2">
-          Players ({lobby.players.length}/6)
-        </h2>
-        <div className="space-y-2">
-          {lobby.players.map((p, i) => (
-            <div
-              key={i}
-              className={`px-4 py-2 rounded flex items-center justify-between ${
-                p.isMe ? "bg-amber-900/40 border border-amber-700" : "bg-stone-800"
-              }`}
-            >
-              <span>
-                {p.name}
-                {p.isMe && (
-                  <span className="text-amber-400 text-sm ml-2">(you)</span>
-                )}
-              </span>
-              {i === 0 && (
-                <span className="text-xs text-stone-500 uppercase tracking-wide">
-                  Host
-                </span>
-              )}
-            </div>
-          ))}
+      {/* Game code with copy button */}
+      <div className="mb-8 text-center">
+        <p className="text-stone-400 text-sm mb-2">Share this code with your friends:</p>
+        <div className="flex items-center gap-3">
+          <p className="text-4xl font-mono font-bold tracking-[0.3em] text-amber-400">
+            {gameId}
+          </p>
+          <button
+            onClick={handleCopyCode}
+            className="px-3 py-1.5 bg-stone-700 hover:bg-stone-600 rounded text-sm transition-colors"
+            title="Copy game code"
+          >
+            {copied ? "✓ Copied" : "Copy"}
+          </button>
         </div>
       </div>
 
-      {/* Seat order info */}
-      <p className="text-stone-500 text-xs mb-4 max-w-sm text-center">
-        Seat order is join order. Player 1 antes 1 and gets 3 cards, player 2 antes 2 and gets 4, etc.
+      {/* Player list with seat details */}
+      <div className="w-full max-w-md mb-6">
+        <h2 className="text-sm text-stone-400 mb-3">
+          Players ({lobby.players.length}/6)
+        </h2>
+        <div className="space-y-2">
+          {lobby.players.map((p) => (
+            <div
+              key={p.seatIndex}
+              className={`px-4 py-3 rounded ${
+                p.isMe
+                  ? "bg-amber-900/30 border border-amber-800"
+                  : "bg-stone-800"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="font-semibold">
+                    {p.name}
+                  </span>
+                  {p.isMe && (
+                    <span className="text-amber-400 text-sm ml-2">(you)</span>
+                  )}
+                  {p.seatIndex === 0 && (
+                    <span className="text-stone-500 text-xs ml-2 uppercase tracking-wide">
+                      Host
+                    </span>
+                  )}
+                </div>
+                <div className="text-right text-sm text-stone-400">
+                  <span>Seat {p.seatIndex + 1}</span>
+                </div>
+              </div>
+              <div className="text-xs text-stone-500 mt-1">
+                Antes {p.ante} · Starts with {p.startingCards} cards
+              </div>
+            </div>
+          ))}
+
+          {/* Empty seat slots */}
+          {Array.from({ length: 6 - lobby.players.length }).map((_, i) => {
+            const seatNum = lobby.players.length + i;
+            return (
+              <div
+                key={`empty-${seatNum}`}
+                className="px-4 py-3 rounded bg-stone-800/30 border border-dashed border-stone-700 text-stone-600"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="italic">Empty seat</span>
+                  <span className="text-sm">Seat {seatNum + 1}</span>
+                </div>
+                <div className="text-xs mt-1">
+                  Antes {seatNum + 1} · Starts with {2 + seatNum + 1} cards
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Note about later seats */}
+      <p className="text-stone-500 text-xs mb-6 max-w-md text-center">
+        Later seats ante more but start with more cards to compensate. Seat order is join order.
       </p>
 
-      {/* Start button (host only) */}
-      {isHost && (
+      {/* Start / waiting */}
+      {lobby.isHost ? (
         <button
           onClick={handleStart}
           disabled={!canStart || starting}
@@ -186,13 +240,19 @@ export default function LobbyPage() {
         >
           {starting
             ? "Starting..."
-            : !canStart
-            ? "Need at least 2 players"
-            : "Start Game"}
+            : lobby.players.length < 2
+            ? "Waiting for players..."
+            : `Start Game (${lobby.players.length} players)`}
         </button>
+      ) : (
+        <div className="text-center">
+          <p className="text-stone-400 text-sm">Waiting for the host to start the game...</p>
+          <p className="text-stone-600 text-xs mt-1">The game will begin automatically when the host starts it.</p>
+        </div>
       )}
-      {!isHost && (
-        <p className="text-stone-400 text-sm">Waiting for the host to start...</p>
+
+      {error && (
+        <p className="text-red-400 text-sm mt-4">{error}</p>
       )}
     </main>
   );

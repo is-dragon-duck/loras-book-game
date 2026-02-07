@@ -48,6 +48,34 @@ export default function Home() {
       setError("Enter a game code");
       return;
     }
+
+    // If we already have a session for this game, go straight to lobby
+    const existingId = localStorage.getItem(`player-${code}`);
+    if (existingId) {
+      // Verify we're still in the game by trying to rejoin
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch(`/api/game/${code}/action`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "join", playerId: existingId, playerName: name.trim() }),
+        });
+        const data = await res.json();
+        if (res.ok && data.rejoined) {
+          router.push(`/lobby/${code}`);
+          return;
+        }
+        // If rejoin failed, clear stale session and fall through to normal join
+        localStorage.removeItem(`player-${code}`);
+      } catch {
+        // Fall through to normal join
+        localStorage.removeItem(`player-${code}`);
+      } finally {
+        setLoading(false);
+      }
+    }
+
     setLoading(true);
     setError("");
     try {
