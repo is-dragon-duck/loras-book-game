@@ -63,6 +63,7 @@ export interface PendingHuntResponse {
 export interface PendingHuntDiscard {
   type: "huntDiscard";
   huntPlayerSeat: number;
+  huntCardId: CardId;
   currentDiscardSeat: number;
   remainingDiscardSeats: number[];
   discardsPerPlayer: number;

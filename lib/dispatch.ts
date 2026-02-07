@@ -7,6 +7,7 @@ import { handleNoTerritory } from "./actions/noTerritory";
 import { handleDiscardToHandLimit } from "./actions/discardToHandLimit";
 import { handleDraftKingdom, handleDraftKingdomPick } from "./actions/draftKingdom";
 import { handlePlayStag, handleStagKingdomPick } from "./actions/playStag";
+import { handlePlayHunt, handleHuntResponse, handleHuntDiscard } from "./actions/playHunt";
 
 export interface ActionResult {
   error?: string;
@@ -53,9 +54,15 @@ export function dispatchAction(
         error = handleStagKingdomPick(state, player, body.cardId as string);
         break;
 
+      case "huntResponse":
+        error = handleHuntResponse(state, player, body.healingId as string | null, body.magiId as string | null);
+        break;
+
+      case "huntDiscard":
+        error = handleHuntDiscard(state, player, body.cardIds as string[]);
+        break;
+
       // Future milestones will add more pending action handlers here:
-      // case "huntResponse":
-      // case "huntDiscard":
       // case "magiChoice":
       // case "magiPlaceCards":
       // case "titheContribute":
@@ -101,8 +108,10 @@ export function dispatchAction(
         case "healing":
           error = handlePlayHealing(state, player, cardId);
           break;
+        case "hunt":
+          error = handlePlayHunt(state, player, cardId);
+          break;
         // Future milestones:
-        // case "hunt":
         // case "magi":
         // case "tithe":
         // case "kingscommand":
