@@ -3,6 +3,7 @@ import { getServiceClient } from "@/lib/supabase";
 import { GameRow, GameState, PlayerState } from "@/lib/types";
 import { createDeck } from "@/lib/cards";
 import { buildPlayerView } from "@/lib/view";
+import { dispatchAction } from "@/lib/dispatch";
 
 export async function POST(
   request: NextRequest,
@@ -107,12 +108,34 @@ export async function POST(
     return NextResponse.json({ error: "Missing playerId" }, { status: 400 });
   }
 
-  // TODO: Phase 3 will add the game engine here
-  // For now, return an error for any game action
-  return NextResponse.json(
-    { error: `Action '${action}' not yet implemented` },
-    { status: 501 }
-  );
+  // Process the action through the game engine
+  const result = dispatchAction(game.state, playerId, action, body);
+
+  if (result.error) {
+    return NextResponse.json({ error: result.error }, { status: 400 });
+  }
+
+  // Determine if game is finished
+  const newPhase = game.state.winner ? "finished" : "playing";
+
+  // Save updated state
+  const { error: updateError } = await supabase
+    .from("games")
+    .update({ state: game.state, phase: newPhase })
+    .eq("id", gameId);
+
+  if (updateError) {
+    return NextResponse.json({ error: "Failed to save game state" }, { status: 500 });
+  }
+
+  // Return filtered view for the acting player
+  try {
+    const view = buildPlayerView(gameId, newPhase as "playing" | "finished", game.state, playerId);
+    return NextResponse.json(view);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Unknown error";
+    return NextResponse.json({ error: msg }, { status: 400 });
+  }
 }
 
 // ---- Game Initialization ----

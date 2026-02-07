@@ -29,8 +29,10 @@ export type TurnPhase =
 export type PendingAction =
   | PendingDraftKingdom
   | PendingHuntResponse
+  | PendingHuntDiscard
   | PendingMagiChoice
   | PendingMagiPlaceCards
+  | PendingTitheDiscard
   | PendingTitheContribute
   | PendingKingCommandResponse
   | PendingKingCommandCollect
@@ -55,6 +57,17 @@ export interface PendingHuntResponse {
   discardsPerPlayer: number;       // 2 + king's commands
   drawsForHunter: number;          // 2 + king's commands
   averters: number;                // count of players who averted (reduces hunter draws)
+  nonAverterSeats: number[];       // seats that failed to avert, need to discard
+}
+
+export interface PendingHuntDiscard {
+  type: "huntDiscard";
+  huntPlayerSeat: number;
+  currentDiscardSeat: number;
+  remainingDiscardSeats: number[];
+  discardsPerPlayer: number;
+  drawsForHunter: number;
+  averters: number;
 }
 
 export interface PendingMagiChoice {
@@ -68,9 +81,19 @@ export interface PendingMagiPlaceCards {
   placeBottomCount: number;        // how many cards to put on bottom
 }
 
+export interface PendingTitheDiscard {
+  type: "titheDiscard";
+  tithePlayerSeat: number;
+  titheCardId: CardId;
+  currentDiscardSeat: number;
+  remainingDiscardSeats: number[];   // opponents who still need to discard/draw
+  contributionsSoFar: number;        // track contribution count through discard flow
+}
+
 export interface PendingTitheContribute {
   type: "titheContribute";
   playerSeat: number;
+  titheCardId: CardId;
   contributionsSoFar: number;      // 0, 1, or 2 max
 }
 

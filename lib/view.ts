@@ -183,6 +183,10 @@ function computePendingActions(pending: NonNullable<GameState["pendingAction"]>,
       if (pending.respondingSeat === me.seatIndex) return ["huntResponse"];
       return [];
 
+    case "huntDiscard":
+      if (pending.currentDiscardSeat === me.seatIndex) return ["huntDiscard"];
+      return [];
+
     case "magiChoice":
       if (pending.playerSeat === me.seatIndex) return ["magiChoice"];
       return [];
@@ -193,6 +197,10 @@ function computePendingActions(pending: NonNullable<GameState["pendingAction"]>,
 
     case "titheContribute":
       if (pending.playerSeat === me.seatIndex) return ["titheContribute"];
+      return [];
+
+    case "titheDiscard":
+      if (pending.currentDiscardSeat === me.seatIndex) return ["titheDiscard"];
       return [];
 
     case "kingCommandResponse":
