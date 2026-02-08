@@ -10,6 +10,7 @@ import { handlePlayStag, handleStagKingdomPick } from "./actions/playStag";
 import { handlePlayHunt, handleHuntResponse, handleHuntDiscard } from "./actions/playHunt";
 import { handlePlayMagi, handleMagiChoice, handleMagiPlaceCards } from "./actions/playMagi";
 import { handlePlayTithe, handleTitheDiscard, handleTitheContribute } from "./actions/playTithe";
+import { handlePlayKingsCommand, handleKingCommandResponse, handleKingCommandCollect } from "./actions/playKingsCommand";
 
 export interface ActionResult {
   error?: string;
@@ -80,9 +81,13 @@ export function dispatchAction(
         error = handleTitheContribute(state, player, body.contribute as boolean);
         break;
 
-      // Future milestones:
-      // case "kingCommandResponse":
-      // case "kingCommandCollect":
+      case "kingCommandResponse":
+        error = handleKingCommandResponse(state, player, body.stagId as string | null);
+        break;
+
+      case "kingCommandCollect":
+        error = handleKingCommandCollect(state, player, body.stagIds as string[]);
+        break;
 
       default:
         return { error: `Unknown or invalid action '${action}' for pending ${state.pendingAction.type}` };
@@ -131,10 +136,11 @@ export function dispatchAction(
         case "tithe":
           error = handlePlayTithe(state, player, cardId);
           break;
-        // Future milestones:
-        // case "kingscommand":
+        case "kingscommand":
+          error = handlePlayKingsCommand(state, player, cardId);
+          break;
         default:
-          return { error: `Playing ${cardType} cards is not yet implemented` };
+          return { error: `Unknown card type: ${cardType}` };
       }
       break;
     }
