@@ -74,12 +74,14 @@ export interface PendingHuntDiscard {
 export interface PendingMagiChoice {
   type: "magiChoice";
   playerSeat: number;
+  magiCardId: CardId;
 }
 
 export interface PendingMagiPlaceCards {
   type: "magiPlaceCards";
   playerSeat: number;
   placeBottomCount: number;        // how many cards to put on bottom
+  magiCardId: CardId;
 }
 
 export interface PendingTitheDiscard {

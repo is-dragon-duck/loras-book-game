@@ -1,4 +1,4 @@
-# Lora's Book Game — Online Playtest
+# No More Tarot — Online Playtest
 
 A turn-based multiplayer card game playable in the browser.
 

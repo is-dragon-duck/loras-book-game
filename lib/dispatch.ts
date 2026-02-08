@@ -8,6 +8,8 @@ import { handleDiscardToHandLimit } from "./actions/discardToHandLimit";
 import { handleDraftKingdom, handleDraftKingdomPick } from "./actions/draftKingdom";
 import { handlePlayStag, handleStagKingdomPick } from "./actions/playStag";
 import { handlePlayHunt, handleHuntResponse, handleHuntDiscard } from "./actions/playHunt";
+import { handlePlayMagi, handleMagiChoice, handleMagiPlaceCards } from "./actions/playMagi";
+import { handlePlayTithe, handleTitheDiscard, handleTitheContribute } from "./actions/playTithe";
 
 export interface ActionResult {
   error?: string;
@@ -62,11 +64,23 @@ export function dispatchAction(
         error = handleHuntDiscard(state, player, body.cardIds as string[]);
         break;
 
-      // Future milestones will add more pending action handlers here:
-      // case "magiChoice":
-      // case "magiPlaceCards":
-      // case "titheContribute":
-      // case "titheDiscard":
+      case "magiChoice":
+        error = handleMagiChoice(state, player, body.drawTop as number, body.drawBottom as number, body.placeBottom as number);
+        break;
+
+      case "magiPlaceCards":
+        error = handleMagiPlaceCards(state, player, body.cardIds as string[]);
+        break;
+
+      case "titheDiscard":
+        error = handleTitheDiscard(state, player, body.cardIds as string[]);
+        break;
+
+      case "titheContribute":
+        error = handleTitheContribute(state, player, body.contribute as boolean);
+        break;
+
+      // Future milestones:
       // case "kingCommandResponse":
       // case "kingCommandCollect":
 
@@ -111,9 +125,13 @@ export function dispatchAction(
         case "hunt":
           error = handlePlayHunt(state, player, cardId);
           break;
+        case "magi":
+          error = handlePlayMagi(state, player, cardId);
+          break;
+        case "tithe":
+          error = handlePlayTithe(state, player, cardId);
+          break;
         // Future milestones:
-        // case "magi":
-        // case "tithe":
         // case "kingscommand":
         default:
           return { error: `Playing ${cardType} cards is not yet implemented` };
